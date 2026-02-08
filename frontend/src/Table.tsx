@@ -12,6 +12,7 @@ interface Player {
     isTurn?: boolean;
     folded?: boolean;
     currentBet?: number;
+    avatar?: string;
 }
 
 function Table() {
@@ -36,7 +37,9 @@ function Table() {
         const savedRoom = localStorage.getItem('poker_room');
         const savedName = localStorage.getItem('poker_username');
         if (savedRoom && savedName) {
-            socket.emit('join_room', { roomId: savedRoom, name: savedName });
+            const savedAvatar = localStorage.getItem('poker_avatar') || '👤';
+            const userId = localStorage.getItem('poker_user_id') || 'unknown'; // Should be generated in Login/utils
+            socket.emit('join_room', { roomId: savedRoom, name: savedName, avatar: savedAvatar, userId });
         }
 
         socket.on('game_update', (data) => {
@@ -70,11 +73,21 @@ function Table() {
             navigate('/');
         });
 
+        socket.on('error', (err: { message: string }) => {
+            console.error('Socket error:', err);
+            alert(err.message || 'An error occurred');
+            if (err.message === 'Room not found' || err.message === 'Room is full') {
+                localStorage.removeItem('poker_room');
+                navigate('/lobby');
+            }
+        });
+
         return () => {
             socket.off('game_update');
             socket.off('player_joined');
             socket.off('player_left');
             socket.off('force_disconnect');
+            socket.off('error');
         };
     }, [navigate]);
 
@@ -133,6 +146,9 @@ function Table() {
                 <button className="room-code" onClick={copyRoomCode} title="Click to copy">
                     🔗 {roomId}
                 </button>
+                <div className={`table-connection ${socket.connected ? 'connected' : 'disconnected'}`} title={socket.connected ? 'Connected' : 'Disconnected'}>
+                    {socket.connected ? '🟢' : '🔴'}
+                </div>
                 <span className="pot">💰 ${pot}</span>
                 <div className="header-actions">
                     {isOwner && (
@@ -175,17 +191,25 @@ function Table() {
                                 className={`seat seat-${i + 1} ${player.isTurn ? 'active' : ''} ${player.folded ? 'folded' : ''}`}
                             >
                                 <div className="seat-avatar">
-                                    {player.name[0].toUpperCase()}
+                                    {player.avatar || '👤'}
                                     {isOwner && player.id !== socket.id && (
-                                        <button className="kick-badge" onClick={() => handleKick(player.id)}>×</button>
+                                        <button
+                                            className="kick-badge"
+                                            onClick={(e) => { e.stopPropagation(); handleKick(player.id); }}
+                                            title="Kick Player"
+                                        >
+                                            ×
+                                        </button>
                                     )}
                                 </div>
-                                <div className="seat-name">{player.name}</div>
+                                <div className="seat-name">
+                                    {player.name}
+                                    {player.isDealer && <span className="dealer-button">D</span>}
+                                </div>
                                 <div className="seat-chips">${player.chips}</div>
                                 {player.currentBet !== undefined && player.currentBet > 0 && (
                                     <div className="seat-bet">Bet: ${player.currentBet}</div>
                                 )}
-                                {player.isDealer && <div className="dealer-chip">D</div>}
                                 {player.folded && <div className="folded-badge">FOLD</div>}
                                 {phase === 'showdown' && player.cards && (
                                     <div className="player-cards">
@@ -249,9 +273,11 @@ function Table() {
                             {canCheck ? (
                                 <button className="btn check" onClick={handleCheck}>Check</button>
                             ) : (
-                                <button className="btn call" onClick={handleCall}>Call ${toCall}</button>
+                                <button className="btn call" onClick={handleCall}>
+                                    Call ${toCall}
+                                </button>
                             )}
-                            <button className="btn bet" onClick={handleBet}>
+                            <button className="btn raise" onClick={handleBet}>
                                 {currentBet > 0 ? `Raise $${betAmount}` : `Bet $${betAmount}`}
                             </button>
                         </div>

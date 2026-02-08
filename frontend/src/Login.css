@@ -8,6 +8,24 @@
     background: radial-gradient(circle at top, #2c2c2c, #121212);
 }
 
+.connection-status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    margin-bottom: 15px;
+}
+
+.connection-status.connected {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.connection-status.disconnected {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+
 .login-card {
     width: 100%;
     max-width: 400px;

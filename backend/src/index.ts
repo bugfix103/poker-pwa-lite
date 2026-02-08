@@ -21,8 +21,6 @@ app.use(cors());
 app.use(express.json());
 
 // Constants
-const SMALL_BLIND = 5;
-const BIG_BLIND = 10;
 const STARTING_CHIPS = 1000;
 
 // Room Management
@@ -35,6 +33,8 @@ interface Player {
     isTurn: boolean;
     folded: boolean;
     currentBet: number;
+    avatar: string; // NEW: Emoji avatar
+    userId: string; // NEW: Persistent ID
 }
 
 interface Room {
@@ -52,6 +52,13 @@ interface Room {
     ownerId: string; // The person who can kick/delete
     lastRaiserIndex: number; // Who made the last raise
     minActionsLeft: number; // Ensure everyone acts at least once
+    settings: {
+        buyIn: number;
+        smallBlind: number;
+        bigBlind: number;
+        maxPlayers: number;
+        roomName: string;
+    };
 }
 
 const rooms: Map<string, Room> = new Map();
@@ -147,13 +154,16 @@ function startNewRound(room: Room) {
     const sbPlayer = room.players[sbIndex];
     const bbPlayer = room.players[bbIndex];
 
-    sbPlayer.chips -= SMALL_BLIND;
-    sbPlayer.currentBet = SMALL_BLIND;
-    bbPlayer.chips -= BIG_BLIND;
-    bbPlayer.currentBet = BIG_BLIND;
+    const sb = room.settings.smallBlind;
+    const bb = room.settings.bigBlind;
 
-    room.pot = SMALL_BLIND + BIG_BLIND;
-    room.currentBet = BIG_BLIND;
+    sbPlayer.chips -= sb;
+    sbPlayer.currentBet = sb;
+    bbPlayer.chips -= bb;
+    bbPlayer.currentBet = bb;
+
+    room.pot = sb + bb;
+    room.currentBet = bb;
 
     // First to act is after big blind
     room.turnIndex = (bbIndex + 1) % room.players.length;
@@ -242,7 +252,8 @@ function broadcastRoomState(room: Room) {
                 currentBet: room.currentBet,
                 status: getStatus(room),
                 winner: room.winner,
-                winningHand: room.winningHand
+                winningHand: room.winningHand,
+                settings: room.settings // NEW
             });
         }
     });
@@ -262,7 +273,8 @@ function getStatus(room: Room): string {
         return '🏆 Showdown!';
     }
     const currentPlayer = room.players[room.turnIndex];
-    return `${currentPlayer?.name}'s turn | Bet: $${room.currentBet} | ${room.phase.toUpperCase()}`;
+    if (!currentPlayer) return `Room: ${room.id} | ${room.phase.toUpperCase()}`;
+    return `${currentPlayer.name}'s turn | Bet: $${room.currentBet} | ${room.phase.toUpperCase()}`;
 }
 
 // Socket handlers
@@ -270,7 +282,20 @@ io.on('connection', (socket: Socket) => {
     console.log('✅ User connected:', socket.id);
     let currentRoom: Room | null = null;
 
-    socket.on('create_room', (name: string) => {
+    socket.on('get_rooms', () => {
+        const roomList = Array.from(rooms.values()).map(r => ({
+            id: r.id,
+            name: r.settings.roomName,
+            players: r.players.length,
+            maxPlayers: r.settings.maxPlayers,
+            buyIn: r.settings.buyIn,
+            blinds: `${r.settings.smallBlind}/${r.settings.bigBlind}`,
+            phase: r.phase
+        }));
+        socket.emit('room_list', roomList);
+    });
+
+    socket.on('create_room', (data: { name: string; avatar: string; settings: any; userId?: string }) => {
         const roomId = generateRoomCode();
         const room: Room = {
             id: roomId,
@@ -284,28 +309,77 @@ io.on('connection', (socket: Socket) => {
             winner: null,
             winningHand: null,
             deck: [],
-            ownerId: socket.id, // NEW
+            ownerId: socket.id,
             lastRaiserIndex: 0,
-            minActionsLeft: 0
+            minActionsLeft: 0,
+            settings: {
+                buyIn: data.settings?.buyIn || 1000,
+                smallBlind: data.settings?.smallBlind || 5,
+                bigBlind: data.settings?.bigBlind || 10,
+                maxPlayers: data.settings?.maxPlayers || 6,
+                roomName: data.settings?.roomName || `${data.name}'s Table`
+            }
         };
         rooms.set(roomId, room);
-        console.log(`🏠 Room ${roomId} created by ${name}`);
+        console.log(`🏠 Room ${roomId} created by ${data.name}`);
 
-        // Auto-join the creator
         socket.emit('room_created', { roomId });
+        io.emit('room_list_update'); // Tell everyone in lobby to refresh
     });
 
-    socket.on('join_room', ({ roomId, name }: { roomId: string; name: string }) => {
+    socket.on('join_room', ({ roomId, name, avatar, userId }: { roomId: string; name: string; avatar: string; userId: string }) => {
         const room = rooms.get(roomId.toUpperCase());
         if (!room) {
             socket.emit('error', { message: 'Room not found' });
             return;
         }
 
+        // Check for existing player by userId (Persistent Identity)
+        const existingPlayerIndex = room.players.findIndex(p => p.userId === userId);
+
+        if (existingPlayerIndex !== -1) {
+            // Player exists - Reconnect them
+            const player = room.players[existingPlayerIndex];
+
+            // Update socket ID to new connection
+            player.id = socket.id;
+            player.name = name; // Update name if changed
+            player.avatar = avatar || player.avatar;
+
+            currentRoom = room;
+            socket.join(roomId);
+
+            console.log(`🔄 ${name} (User: ${userId}) reconnected to room ${roomId}`);
+
+            // Send update immediately
+            socket.emit('player_joined', {
+                players: room.players.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    avatar: p.avatar,
+                    chips: p.chips,
+                    isDealer: p.isDealer,
+                    isTurn: p.isTurn
+                })),
+                newPlayer: name,
+                roomId
+            });
+            broadcastRoomState(room);
+            io.emit('room_list_update');
+            return;
+        }
+
+        if (room.players.length >= room.settings.maxPlayers) {
+            socket.emit('error', { message: 'Room is full' });
+            return;
+        }
+
         const newPlayer: Player = {
             id: socket.id,
+            userId: userId || socket.id, // Fallback to socket ID if no userId
             name,
-            chips: STARTING_CHIPS,
+            avatar: avatar || '👤',
+            chips: room.settings.buyIn,
             cards: [],
             isDealer: room.players.length === 0,
             isTurn: false,
@@ -323,6 +397,7 @@ io.on('connection', (socket: Socket) => {
             players: room.players.map(p => ({
                 id: p.id,
                 name: p.name,
+                avatar: p.avatar,
                 chips: p.chips,
                 isDealer: p.isDealer,
                 isTurn: p.isTurn
@@ -332,6 +407,7 @@ io.on('connection', (socket: Socket) => {
         });
 
         broadcastRoomState(room);
+        io.emit('room_list_update'); // Update player counts in lobby
     });
 
     socket.on('start_game', () => {
@@ -378,6 +454,8 @@ io.on('connection', (socket: Socket) => {
                 break;
             case 'check':
                 if (player.currentBet < room.currentBet) {
+                    console.log(`⚠️ Invalid check by ${player.name}: Bet ${player.currentBet} < Room ${room.currentBet}`);
+                    socket.emit('error', { message: 'Cannot check, must call or fold' });
                     return;
                 }
                 break;
@@ -390,7 +468,7 @@ io.on('connection', (socket: Socket) => {
                 }
                 break;
             case 'bet':
-                const amount = data.amount || BIG_BLIND;
+                const amount = data.amount || room.settings.bigBlind;
                 room.pot += amount;
                 player.chips -= amount;
                 player.currentBet += amount;

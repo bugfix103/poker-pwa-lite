@@ -1,55 +1,91 @@
-import { useState } from 'react';
-import { io } from 'socket.io-client';
+import { useState, useEffect } from 'react';
+import { io, Socket } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import { AVATARS } from './types';
+import { getUserId } from './utils';
 import './Login.css';
 
 // Connect to backend
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
-export const socket = io(BACKEND_URL);
+console.log('🔌 Backend URL:', BACKEND_URL);
+
+// Create socket with explicit options
+export const socket: Socket = io(BACKEND_URL, {
+    transports: ['websocket', 'polling'],
+    autoConnect: true,
+    reconnection: true,
+    reconnectionAttempts: 10,
+    reconnectionDelay: 1000,
+});
+
+// Debug socket connection
+socket.on('connect', () => {
+    console.log('✅ Socket connected! ID:', socket.id);
+});
+
+socket.on('connect_error', (error) => {
+    console.error('❌ Socket connection error:', error.message);
+});
+
+socket.on('disconnect', (reason) => {
+    console.log('🔌 Socket disconnected:', reason);
+});
 
 function Login() {
     const [name, setName] = useState('');
-    const [roomCode, setRoomCode] = useState('');
-    const [mode, setMode] = useState<'menu' | 'join'>('menu');
+    const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
     const [error, setError] = useState('');
+    const [isConnected, setIsConnected] = useState(socket.connected);
     const navigate = useNavigate();
 
-    const handleCreateRoom = () => {
+    useEffect(() => {
+        const onConnect = () => {
+            console.log('🎮 Socket ready!');
+            setIsConnected(true);
+        };
+        const onDisconnect = () => {
+            setIsConnected(false);
+        };
+
+        socket.on('connect', onConnect);
+        socket.on('disconnect', onDisconnect);
+
+        if (!socket.connected) {
+            socket.connect();
+        }
+
+        const savedName = localStorage.getItem('poker_username');
+        if (savedName) setName(savedName);
+
+        const savedAvatar = localStorage.getItem('poker_avatar');
+        if (savedAvatar) setSelectedAvatar(savedAvatar);
+
+        return () => {
+            socket.off('connect', onConnect);
+            socket.off('disconnect', onDisconnect);
+        };
+    }, []);
+
+
+
+    // ... (imports)
+
+    const handleEnterLobby = () => {
         if (!name.trim()) {
             setError('Please enter your name');
             return;
         }
-        localStorage.setItem('poker_username', name);
-
-        socket.emit('create_room', name);
-        socket.once('room_created', ({ roomId }: { roomId: string }) => {
-            localStorage.setItem('poker_room', roomId);
-            socket.emit('join_room', { roomId, name });
-            navigate('/table');
-        });
-    };
-
-    const handleJoinRoom = () => {
-        if (!name.trim()) {
-            setError('Please enter your name');
+        if (!isConnected) {
+            setError('Not connected to server. Please wait...');
             return;
         }
-        if (!roomCode.trim()) {
-            setError('Please enter room code');
-            return;
-        }
+
         localStorage.setItem('poker_username', name);
-        localStorage.setItem('poker_room', roomCode.toUpperCase());
+        localStorage.setItem('poker_avatar', selectedAvatar);
+        getUserId(); // Ensure ID is generated
 
-        socket.emit('join_room', { roomId: roomCode.toUpperCase(), name });
-
-        socket.once('error', ({ message }: { message: string }) => {
-            setError(message);
-        });
-
-        socket.once('player_joined', () => {
-            navigate('/table');
-        });
+        // Go to lobby instead of creating room directly
+        navigate('/lobby');
     };
 
     return (
@@ -58,7 +94,27 @@ function Login() {
                 <h1 className="logo">♠️ Poker Elite ♦️</h1>
                 <p className="tagline">Real-time Texas Hold'em</p>
 
+                <div className={`connection-status ${isConnected ? 'connected' : 'disconnected'}`}>
+                    {isConnected ? '🟢 Connected' : '🔴 Connecting...'}
+                </div>
+
                 {error && <div className="error-message">{error}</div>}
+
+                <div className="avatar-selector">
+                    <span className="selected-avatar">{selectedAvatar}</span>
+                    <p style={{ color: '#aaa', fontSize: '0.9rem' }}>Choose your avatar</p>
+                    <div className="avatar-grid">
+                        {AVATARS.map(avatar => (
+                            <div
+                                key={avatar}
+                                className={`avatar-option ${selectedAvatar === avatar ? 'selected' : ''}`}
+                                onClick={() => setSelectedAvatar(avatar)}
+                            >
+                                {avatar}
+                            </div>
+                        ))}
+                    </div>
+                </div>
 
                 <input
                     type="text"
@@ -69,35 +125,14 @@ function Login() {
                     maxLength={15}
                 />
 
-                {mode === 'menu' ? (
-                    <div className="button-group">
-                        <button className="btn primary" onClick={handleCreateRoom}>
-                            🏠 Create Room
-                        </button>
-                        <button className="btn secondary" onClick={() => setMode('join')}>
-                            🔗 Join Room
-                        </button>
-                    </div>
-                ) : (
-                    <>
-                        <input
-                            type="text"
-                            placeholder="Room Code (e.g., ABC123)"
-                            value={roomCode}
-                            onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                            className="input-field"
-                            maxLength={6}
-                        />
-                        <div className="button-group">
-                            <button className="btn primary" onClick={handleJoinRoom}>
-                                ▶️ Join Game
-                            </button>
-                            <button className="btn secondary" onClick={() => setMode('menu')}>
-                                ← Back
-                            </button>
-                        </div>
-                    </>
-                )}
+                <button
+                    className="btn primary full-width"
+                    onClick={handleEnterLobby}
+                    disabled={!isConnected}
+                    style={{ marginTop: '20px' }}
+                >
+                    Enter Lobby
+                </button>
             </div>
         </div>
     );

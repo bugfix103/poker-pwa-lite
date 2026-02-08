@@ -458,3 +458,21 @@
 .mini-card.red {
     color: #e53935;
 }
+/* Connection Status */
+.table-connection {
+    font-size: 0.8rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 10px;
+    cursor: help;
+}
+
+.table-connection.connected {
+    background: rgba(76, 175, 80, 0.2);
+    border: 1px solid #4caf50;
+}
+
+.table-connection.disconnected {
+    background: rgba(244, 67, 54, 0.2);
+    border: 1px solid #f44336;
+}
