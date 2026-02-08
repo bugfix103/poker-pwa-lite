@@ -29,6 +29,9 @@ function Table() {
     const [currentBet, setCurrentBet] = useState(0);
     const [roomId, setRoomId] = useState(localStorage.getItem('poker_room') || '');
     const [ownerId, setOwnerId] = useState<string | null>(null);
+    const [turnStartTime, setTurnStartTime] = useState<number | null>(null);
+    const [turnDuration, setTurnDuration] = useState<number>(30);
+    const [timeLeft, setTimeLeft] = useState<number | null>(null);
     const navigate = useNavigate();
 
     const username = localStorage.getItem('poker_username') || 'Guest';
@@ -59,6 +62,8 @@ function Table() {
             if (data.ownerId) setOwnerId(data.ownerId);
             setWinner(data.winner || null);
             setWinningHand(data.winningHand || null);
+            if (data.turnStartTime) setTurnStartTime(data.turnStartTime);
+            if (data.turnDuration) setTurnDuration(data.turnDuration);
         });
 
         socket.on('player_joined', (data) => {
@@ -94,6 +99,22 @@ function Table() {
             socket.off('error');
         };
     }, [navigate]);
+
+    // Turn timer countdown
+    useEffect(() => {
+        if (!turnStartTime || phase === 'waiting' || phase === 'showdown') {
+            setTimeLeft(null);
+            return;
+        }
+
+        const interval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - turnStartTime) / 1000);
+            const remaining = Math.max(0, turnDuration - elapsed);
+            setTimeLeft(remaining);
+        }, 100);
+
+        return () => clearInterval(interval);
+    }, [turnStartTime, turnDuration, phase]);
 
     const handleStartGame = () => socket.emit('start_game');
     const handleFold = () => socket.emit('action', { type: 'fold' });
@@ -181,6 +202,14 @@ function Table() {
 
             {/* Game Status */}
             <div className={`status-bar ${winner ? 'winner' : ''}`}>{gameStatus}</div>
+
+            {/* Turn Timer */}
+            {timeLeft !== null && phase !== 'waiting' && phase !== 'showdown' && (
+                <div className="turn-timer">
+                    <div className="timer-bar" style={{ width: `${(timeLeft / turnDuration) * 100}%` }}></div>
+                    <span className="timer-text">⏱️ {timeLeft}s</span>
+                </div>
+            )}
 
             {/* Winner Banner */}
             {winner && (

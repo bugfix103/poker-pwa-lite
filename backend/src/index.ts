@@ -30,6 +30,46 @@ app.use(express.json());
 const STARTING_CHIPS = 1000;
 
 const rooms: Map<string, Room> = new Map();
+const turnTimers: Map<string, NodeJS.Timeout> = new Map(); // Track active turn timers
+
+// Clear existing timer for a room
+function clearTurnTimer(roomId: string) {
+    const existingTimer = turnTimers.get(roomId);
+    if (existingTimer) {
+        clearTimeout(existingTimer);
+        turnTimers.delete(roomId);
+    }
+}
+
+// Start turn timer with auto-fold on expiry
+function startTurnTimer(room: Room) {
+    // Don't set timer for bots (they have their own delay) or during waiting/showdown
+    if (room.phase === 'waiting' || room.phase === 'showdown') return;
+
+    const currentPlayer = room.players[room.turnIndex];
+    if (!currentPlayer || currentPlayer.isBot) return;
+
+    clearTurnTimer(room.id);
+
+    room.turnStartTime = Date.now();
+
+    const timer = setTimeout(() => {
+        // Auto-fold on timeout
+        const roomNow = rooms.get(room.id);
+        if (!roomNow) return;
+
+        const player = roomNow.players[roomNow.turnIndex];
+        if (!player || player.isBot) return;
+
+        console.log(`⏰ [${room.id}] ${player.name} timed out - AUTO FOLD`);
+
+        // Execute fold action
+        executeGameAction(roomNow, player, { type: 'fold' });
+
+    }, room.turnDuration * 1000);
+
+    turnTimers.set(room.id, timer);
+}
 
 // Generate 6-character room code
 function generateRoomCode(): string {
@@ -376,13 +416,18 @@ function broadcastRoomState(room: Room) {
                 status: getStatus(room),
                 winner: room.winner,
                 winningHand: room.winningHand,
-                settings: room.settings // NEW
+                settings: room.settings,
+                turnStartTime: room.turnStartTime, // For timer countdown
+                turnDuration: room.turnDuration // Seconds per turn
             });
         }
     });
 
     // Trigger bot if it's their turn
     handleBotTurn(room);
+
+    // Start turn timer for human players
+    startTurnTimer(room);
 }
 
 function getStatus(room: Room): string {
@@ -438,6 +483,7 @@ io.on('connection', (socket: Socket) => {
             ownerId: socket.id,
             lastRaiserIndex: 0,
             minActionsLeft: 0,
+            turnDuration: 30, // 30 seconds per turn
             settings: {
                 buyIn: data.settings?.buyIn || 1000,
                 smallBlind: data.settings?.smallBlind || 5,

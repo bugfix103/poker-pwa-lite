@@ -36,4 +36,6 @@ export interface Room {
     lastRaiserIndex: number;
     minActionsLeft: number;
     settings: RoomSettings;
+    turnStartTime?: number; // Unix timestamp when turn started
+    turnDuration: number; // Seconds allowed per turn (default 30)
 }

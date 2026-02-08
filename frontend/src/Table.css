@@ -537,3 +537,32 @@
     background: rgba(244, 67, 54, 0.2);
     border: 1px solid #f44336;
 }
+
+/* Turn Timer */
+.turn-timer {
+    position: relative;
+    width: 100%;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 8px 0;
+}
+
+.timer-bar {
+    height: 100%;
+    background: linear-gradient(90deg, #4caf50, #8bc34a);
+    border-radius: 12px;
+    transition: width 0.1s linear;
+}
+
+.turn-timer .timer-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    font-size: 0.8rem;
+    text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
