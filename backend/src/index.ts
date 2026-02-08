@@ -292,29 +292,36 @@ function executeGameAction(room: Room, player: Player, data: { type: string; amo
         case 'call':
             const toCall = room.currentBet - player.currentBet;
             if (toCall > 0) {
-                room.pot += toCall;
-                player.chips -= toCall;
-                player.currentBet = room.currentBet;
+                // Handle all-in on call
+                const actualCall = Math.min(toCall, player.chips);
+                room.pot += actualCall;
+                player.chips -= actualCall;
+                player.currentBet += actualCall;
             }
             break;
         case 'bet':
-        case 'raise': // Treat raise same as bet
-            const amount = data.amount || room.settings.bigBlind;
-            // Validate funds
-            if (player.chips < amount) {
-                // All in?
-                // For simplicity, just bet what they have
-                // room.pot += player.chips;
-                // player.currentBet += player.chips;
-                // player.chips = 0;
-                // For now, just reject or cap? Let's cap at max chips
-                // Not implemented fully safely here.
+        case 'raise':
+            let amount = data.amount || room.settings.bigBlind;
+
+            // Enforce minimum bet = big blind
+            if (amount < room.settings.bigBlind) {
+                amount = room.settings.bigBlind;
             }
+
+            // Cap at player's remaining chips (all-in)
+            const maxBet = player.chips;
+            if (amount > maxBet) {
+                amount = maxBet; // All-in
+                console.log(`💰 [${room.id}] ${player.name} is ALL-IN for ${amount}!`);
+            }
+
+            // Validate player has positive chips
+            if (amount <= 0) return;
 
             room.pot += amount;
             player.chips -= amount;
             player.currentBet += amount;
-            room.currentBet = player.currentBet;
+            room.currentBet = Math.max(room.currentBet, player.currentBet);
             room.lastRaiserIndex = room.players.indexOf(player);
             room.minActionsLeft = room.players.filter(p => !p.folded).length - 1;
             break;
