@@ -13,9 +13,11 @@ function Lobby() {
 
     const username = localStorage.getItem('poker_username');
     const avatar = localStorage.getItem('poker_avatar') || '👤';
+    const token = localStorage.getItem('poker_token');
 
     useEffect(() => {
-        if (!username) {
+        // Require both username and token
+        if (!username || !token) {
             navigate('/');
             return;
         }
@@ -87,7 +89,11 @@ function Lobby() {
                         <div className="chip-balance">Starting: ${settings.buyIn}</div>
                     </div>
                 </div>
-                <button className="btn secondary" onClick={() => navigate('/')}>Log Out</button>
+                <button className="btn secondary" onClick={() => {
+                    localStorage.removeItem('poker_token');
+                    localStorage.removeItem('poker_username');
+                    navigate('/');
+                }}>Log Out</button>
             </header>
 
             <div className="lobby-actions">

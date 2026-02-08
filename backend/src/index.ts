@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import { Hand } from 'pokersolver';
 import { Player, Room } from './types';
 import { BotLogic } from './bot';
+import authRouter from './auth';
 
 dotenv.config();
 
@@ -26,8 +27,11 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Auth routes
+app.use('/auth', authRouter);
+
 // Constants
-const STARTING_CHIPS = 1000;
+const STARTING_CHIPS = 10000;
 
 const rooms: Map<string, Room> = new Map();
 const turnTimers: Map<string, NodeJS.Timeout> = new Map(); // Track active turn timers
@@ -666,17 +670,35 @@ io.on('connection', (socket: Socket) => {
 
     socket.on('kick_player', (playerId: string) => {
         if (!currentRoom || currentRoom.ownerId !== socket.id) return;
-        const targetSocket = io.sockets.sockets.get(playerId);
-        if (targetSocket) {
-            targetSocket.emit('force_disconnect', { message: 'Kicked by owner' });
-            targetSocket.leave(currentRoom.id);
+
+        // Find and remove the player from room
+        const playerIndex = currentRoom.players.findIndex(p => p.id === playerId);
+        if (playerIndex !== -1) {
+            const kickedPlayer = currentRoom.players[playerIndex];
+            currentRoom.players.splice(playerIndex, 1);
+            console.log(`👢 ${kickedPlayer.name} was kicked from room ${currentRoom.id}`);
+
+            // Notify kicked player
+            const targetSocket = io.sockets.sockets.get(playerId);
+            if (targetSocket) {
+                targetSocket.emit('force_disconnect', { message: 'Kicked by owner' });
+                targetSocket.leave(currentRoom.id);
+            }
+
+            // Broadcast updated state
+            io.to(currentRoom.id).emit('player_left', { name: kickedPlayer.name });
+            broadcastRoomState(currentRoom);
+            io.emit('room_list_update');
         }
     });
 
     socket.on('delete_room', () => {
         if (!currentRoom || currentRoom.ownerId !== socket.id) return;
+        console.log(`🗑️ Room ${currentRoom.id} deleted by owner`);
+        clearTurnTimer(currentRoom.id);
         io.to(currentRoom.id).emit('force_disconnect', { message: 'Room deleted by owner' });
         rooms.delete(currentRoom.id);
+        io.emit('room_list_update');
     });
 
     socket.on('disconnect', () => {
@@ -685,16 +707,29 @@ io.on('connection', (socket: Socket) => {
             const playerIndex = currentRoom.players.findIndex(p => p.id === socket.id);
             if (playerIndex !== -1) {
                 const playerName = currentRoom.players[playerIndex].name;
+                const wasOwner = currentRoom.ownerId === socket.id;
+
                 currentRoom.players.splice(playerIndex, 1);
                 io.to(currentRoom.id).emit('player_left', { name: playerName });
 
+                // Transfer ownership if owner left and there are still players
+                if (wasOwner && currentRoom.players.length > 0) {
+                    // Find first non-bot player, or first bot if all are bots
+                    const newOwner = currentRoom.players.find(p => !p.isBot) || currentRoom.players[0];
+                    currentRoom.ownerId = newOwner.id;
+                    console.log(`👑 Ownership of ${currentRoom.id} transferred to ${newOwner.name}`);
+                }
+
                 if (currentRoom.players.length < 2) {
                     currentRoom.phase = 'waiting';
+                    clearTurnTimer(currentRoom.id);
                 }
+
                 broadcastRoomState(currentRoom);
 
                 // Clean up empty rooms
                 if (currentRoom.players.length === 0) {
+                    clearTurnTimer(currentRoom.id);
                     rooms.delete(currentRoom.id);
                     console.log(`🗑️ Room ${currentRoom.id} deleted (empty)`);
                 }

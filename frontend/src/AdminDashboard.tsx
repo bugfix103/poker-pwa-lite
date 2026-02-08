@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './Lobby.css';
 
 interface ServerStats {
     uptime: number;
@@ -17,6 +16,7 @@ interface ServerStats {
 }
 
 const AdminDashboard: React.FC = () => {
+    console.log('🛡️ AdminDashboard component mounted');
     const [stats, setStats] = useState<ServerStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -48,6 +48,7 @@ const AdminDashboard: React.FC = () => {
             const data = await response.json();
             setStats(data);
             setLoading(false);
+            setError('');
         } catch (err) {
             const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
             setError(`Failed to connect to server at ${backendUrl}`);
@@ -57,7 +58,7 @@ const AdminDashboard: React.FC = () => {
 
     useEffect(() => {
         fetchStats();
-        const interval = setInterval(fetchStats, 5000); // Poll every 5 seconds
+        const interval = setInterval(fetchStats, 5000);
         return () => clearInterval(interval);
     }, []);
 
@@ -91,57 +92,128 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
-    if (loading) return <div className="lobby-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}><div style={{ color: 'white', fontSize: '1.5rem' }}>Loading...</div></div>;
-    if (error) return <div className="lobby-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '20px' }}><div style={{ color: '#ff5555', fontSize: '1.2rem', textAlign: 'center' }}>{error}</div><button className="poker-button secondary" onClick={() => navigate('/admin')}>Back to Login</button></div>;
+    const containerStyle: React.CSSProperties = {
+        minHeight: '100vh',
+        background: '#121212',
+        color: 'white',
+        padding: '20px',
+        maxWidth: '800px',
+        margin: '0 auto'
+    };
 
-    return (
-        <div className="lobby-container" style={{ overflowY: 'auto' }}>
-            <div className="lobby-header">
-                <h1 className="lobby-title">🛡️ Admin Dashboard</h1>
-                <div className="chip-balance">
-                    Uptime: {Math.floor(stats?.uptime || 0)}s
-                </div>
+    const headerStyle: React.CSSProperties = {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '30px',
+        background: 'rgba(30, 30, 30, 0.6)',
+        padding: '15px 20px',
+        borderRadius: '12px'
+    };
+
+    const cardStyle: React.CSSProperties = {
+        background: 'rgba(255, 255, 255, 0.05)',
+        padding: '20px',
+        borderRadius: '12px',
+        marginBottom: '20px',
+        border: '1px solid rgba(255, 255, 255, 0.1)'
+    };
+
+    const buttonStyle: React.CSSProperties = {
+        padding: '10px 20px',
+        borderRadius: '8px',
+        border: 'none',
+        cursor: 'pointer',
+        fontWeight: 'bold'
+    };
+
+    if (loading) {
+        return (
+            <div style={{ ...containerStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ fontSize: '1.5rem' }}>Loading...</div>
             </div>
+        );
+    }
 
-            <div className="player-profile" style={{ marginBottom: '20px' }}>
-                <div className="profile-info">
-                    <div className="profile-name">System Health</div>
-                    <div className="profile-chips" style={{ fontSize: '0.9rem', color: '#ccc' }}>
-                        Rooms: {stats?.rooms} | Players: {stats?.totalPlayers}
-                    </div>
-                </div>
-                <button className="poker-button secondary" onClick={resetServer} style={{ background: '#d32f2f' }}>
-                    ⚠️ Reset Server
+    if (error) {
+        return (
+            <div style={{ ...containerStyle, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '20px' }}>
+                <div style={{ color: '#ff5555', fontSize: '1.2rem', textAlign: 'center' }}>{error}</div>
+                <button style={{ ...buttonStyle, background: 'rgba(255,255,255,0.1)', color: 'white' }} onClick={() => navigate('/admin')}>
+                    Back to Login
                 </button>
             </div>
+        );
+    }
 
-            <div className="room-list">
+    return (
+        <div style={containerStyle}>
+            <div style={headerStyle}>
+                <h1 style={{ margin: 0 }}>🛡️ Admin Dashboard</h1>
+                <div style={{ color: '#4caf50' }}>Uptime: {Math.floor(stats?.uptime || 0)}s</div>
+            </div>
+
+            <div style={cardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <h3 style={{ margin: '0 0 10px 0' }}>System Health</h3>
+                        <div style={{ color: '#aaa' }}>
+                            Rooms: {stats?.rooms} | Players: {stats?.totalPlayers}
+                        </div>
+                    </div>
+                    <button
+                        style={{ ...buttonStyle, background: '#d32f2f', color: 'white' }}
+                        onClick={resetServer}
+                    >
+                        ⚠️ Reset Server
+                    </button>
+                </div>
+            </div>
+
+            <div>
                 <h3>Active Rooms ({stats?.activeRooms.length})</h3>
                 {stats?.activeRooms.map(room => (
-                    <div key={room.id} className="room-item">
-                        <div className="room-info">
-                            <div className="room-name">{room.name}</div>
-                            <div className="room-details">
-                                ID: {room.id} | {room.players} Players | Phase: {room.phase}
+                    <div key={room.id} style={cardStyle}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{room.name}</div>
+                                <div style={{ color: '#aaa', marginTop: '5px' }}>
+                                    ID: {room.id} | {room.players} Players | Phase: {room.phase}
+                                </div>
                             </div>
-                        </div>
-                        <div className="room-action">
-                            <button className="join-btn" onClick={() => deleteRoom(room.id)} style={{ background: '#d32f2f', minWidth: '80px' }}>
+                            <button
+                                style={{ ...buttonStyle, background: '#d32f2f', color: 'white' }}
+                                onClick={() => deleteRoom(room.id)}
+                            >
                                 Delete
                             </button>
                         </div>
                     </div>
                 ))}
                 {stats?.activeRooms.length === 0 && (
-                    <div className="room-item" style={{ justifyContent: 'center', opacity: 0.5 }}>
+                    <div style={{ ...cardStyle, textAlign: 'center', opacity: 0.5 }}>
                         No active rooms
                     </div>
                 )}
             </div>
 
-            <button className="poker-button secondary" onClick={() => navigate('/lobby')} style={{ marginTop: '20px' }}>
-                Back to Lobby
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                <button
+                    style={{ ...buttonStyle, background: 'rgba(255,255,255,0.1)', color: 'white' }}
+                    onClick={() => {
+                        localStorage.removeItem('adminSecret');
+                        navigate('/admin');
+                    }}
+                >
+                    Logout Admin
+                </button>
+                <button
+                    style={{ ...buttonStyle, background: '#bb86fc', color: '#000' }}
+                    onClick={() => navigate('/lobby')}
+                >
+                    Go to Lobby
+                </button>
+            </div>
         </div>
     );
 };

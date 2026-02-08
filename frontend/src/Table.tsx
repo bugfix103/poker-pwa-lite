@@ -79,7 +79,7 @@ function Table() {
         socket.on('force_disconnect', (data) => {
             alert(data?.message || 'Disconnected from room');
             localStorage.removeItem('poker_room');
-            navigate('/');
+            navigate('/lobby');
         });
 
         socket.on('error', (err: { message: string }) => {
@@ -127,7 +127,7 @@ function Table() {
         localStorage.removeItem('poker_room');
         socket.disconnect();
         socket.connect();
-        navigate('/');
+        navigate('/lobby');
     };
 
     const handleKick = (playerId: string) => {

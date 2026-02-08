@@ -127,3 +127,44 @@
         transform: translateY(0);
     }
 }
+
+/* Auth Toggle */
+.auth-toggle {
+    display: flex;
+    margin-bottom: 20px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #1e1e1e;
+}
+
+.auth-tab {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    background: transparent;
+    color: #888;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.auth-tab.active {
+    background: linear-gradient(135deg, #bb86fc, #8b5cf6);
+    color: white;
+}
+
+.auth-tab:hover:not(.active) {
+    background: #333;
+}
+
+/* User Chips Display */
+.user-chips-display {
+    background: linear-gradient(135deg, #2e7d32, #1b5e20);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
