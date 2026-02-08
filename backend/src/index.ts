@@ -49,6 +49,9 @@ interface Room {
     winner: string | null;
     winningHand: string | null;
     deck: string[];
+    ownerId: string; // The person who can kick/delete
+    lastRaiserIndex: number; // Who made the last raise
+    minActionsLeft: number; // Ensure everyone acts at least once
 }
 
 const rooms: Map<string, Room> = new Map();
@@ -125,7 +128,6 @@ function startNewRound(room: Room) {
         player.cards = [room.deck.pop()!, room.deck.pop()!];
         player.folded = false;
         player.currentBet = 0;
-        console.log(`  ${player.name} gets: ${player.cards.map(toDisplayCard).join(', ')}`);
     });
 
     room.communityCards = [];
@@ -153,10 +155,10 @@ function startNewRound(room: Room) {
     room.pot = SMALL_BLIND + BIG_BLIND;
     room.currentBet = BIG_BLIND;
 
-    console.log(`  💰 ${sbPlayer.name} posts SB ($${SMALL_BLIND}), ${bbPlayer.name} posts BB ($${BIG_BLIND})`);
-
     // First to act is after big blind
     room.turnIndex = (bbIndex + 1) % room.players.length;
+    room.lastRaiserIndex = bbIndex; // BB is technically the last raiser
+    room.minActionsLeft = room.players.length; // Everyone must act at least once
 
     room.players.forEach((p, i) => {
         p.isTurn = i === room.turnIndex;
@@ -200,11 +202,14 @@ function advancePhase(room: Room) {
     room.players.forEach(p => p.currentBet = 0);
     room.currentBet = 0;
 
-    // Reset turn
+    // Reset turn - after dealer (SB acts first post-flop)
     room.turnIndex = (room.dealerIndex + 1) % room.players.length;
     while (room.players[room.turnIndex]?.folded) {
         room.turnIndex = (room.turnIndex + 1) % room.players.length;
     }
+    room.lastRaiserIndex = room.dealerIndex; // So it goes around at least once
+    room.minActionsLeft = room.players.filter(p => !p.folded).length;
+
     room.players.forEach((p, i) => {
         p.isTurn = i === room.turnIndex && !p.folded;
     });
@@ -219,6 +224,7 @@ function broadcastRoomState(room: Room) {
         if (socket) {
             socket.emit('game_update', {
                 roomId: room.id,
+                ownerId: room.ownerId,
                 players: room.players.map(p => ({
                     id: p.id,
                     name: p.name,
@@ -277,7 +283,10 @@ io.on('connection', (socket: Socket) => {
             turnIndex: 0,
             winner: null,
             winningHand: null,
-            deck: []
+            deck: [],
+            ownerId: socket.id, // NEW
+            lastRaiserIndex: 0,
+            minActionsLeft: 0
         };
         rooms.set(roomId, room);
         console.log(`🏠 Room ${roomId} created by ${name}`);
@@ -386,7 +395,13 @@ io.on('connection', (socket: Socket) => {
                 player.chips -= amount;
                 player.currentBet += amount;
                 room.currentBet = player.currentBet;
+                room.lastRaiserIndex = room.players.indexOf(player);
+                room.minActionsLeft = room.players.filter(p => !p.folded).length - 1;
                 break;
+        }
+
+        if (data.type !== 'bet') {
+            room.minActionsLeft--;
         }
 
         // Move to next non-folded player
@@ -396,16 +411,31 @@ io.on('connection', (socket: Socket) => {
         } while (room.players[room.turnIndex].folded);
         room.players[room.turnIndex].isTurn = true;
 
-        // Check if betting round is complete
+        // NEW Betting Round logic
         const activeBettors = room.players.filter(p => !p.folded);
         const allMatched = activeBettors.every(p => p.currentBet === room.currentBet);
-        const backToFirst = room.turnIndex === (room.dealerIndex + 1) % room.players.length;
+        const roundComplete = room.minActionsLeft <= 0 && allMatched;
 
-        if (allMatched && backToFirst) {
+        if (roundComplete) {
             advancePhase(room);
         } else {
             broadcastRoomState(room);
         }
+    });
+
+    socket.on('kick_player', (playerId: string) => {
+        if (!currentRoom || currentRoom.ownerId !== socket.id) return;
+        const targetSocket = io.sockets.sockets.get(playerId);
+        if (targetSocket) {
+            targetSocket.emit('force_disconnect', { message: 'Kicked by owner' });
+            targetSocket.leave(currentRoom.id);
+        }
+    });
+
+    socket.on('delete_room', () => {
+        if (!currentRoom || currentRoom.ownerId !== socket.id) return;
+        io.to(currentRoom.id).emit('force_disconnect', { message: 'Room deleted by owner' });
+        rooms.delete(currentRoom.id);
     });
 
     socket.on('disconnect', () => {

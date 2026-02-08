@@ -57,6 +57,25 @@
     background: rgba(229, 57, 53, 0.4);
 }
 
+.delete-btn {
+    background: rgba(229, 57, 53, 0.2);
+    border: 1px solid #e53935;
+    color: #e53935;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.delete-btn:hover {
+    background: rgba(229, 57, 53, 0.5);
+}
+
+.header-actions {
+    display: flex;
+    gap: 8px;
+}
+
 .seat-bet {
     font-size: 0.7rem;
     color: #ffd700;
@@ -161,6 +180,31 @@
     font-weight: bold;
     font-size: 1.2rem;
     margin-bottom: 5px;
+    position: relative;
+}
+
+.kick-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #e53935;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    line-height: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.kick-badge:hover {
+    background: #ff5252;
+    transform: scale(1.1);
 }
 
 .seat-name {

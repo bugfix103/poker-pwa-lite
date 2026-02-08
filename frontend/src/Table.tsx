@@ -26,6 +26,7 @@ function Table() {
     const [winningHand, setWinningHand] = useState<string | null>(null);
     const [currentBet, setCurrentBet] = useState(0);
     const [roomId, setRoomId] = useState(localStorage.getItem('poker_room') || '');
+    const [ownerId, setOwnerId] = useState<string | null>(null);
     const navigate = useNavigate();
 
     const username = localStorage.getItem('poker_username') || 'Guest';
@@ -48,12 +49,14 @@ function Table() {
             if (data.phase) setPhase(data.phase);
             if (data.currentBet !== undefined) setCurrentBet(data.currentBet);
             if (data.roomId) setRoomId(data.roomId);
+            if (data.ownerId) setOwnerId(data.ownerId);
             setWinner(data.winner || null);
             setWinningHand(data.winningHand || null);
         });
 
         socket.on('player_joined', (data) => {
             setPlayers(data.players);
+            if (data.roomId) setRoomId(data.roomId);
             setGameStatus(`${data.newPlayer} joined!`);
         });
 
@@ -61,7 +64,8 @@ function Table() {
             setGameStatus(`${data.name} left the game`);
         });
 
-        socket.on('force_disconnect', () => {
+        socket.on('force_disconnect', (data) => {
+            alert(data?.message || 'Disconnected from room');
             localStorage.removeItem('poker_room');
             navigate('/');
         });
@@ -88,6 +92,18 @@ function Table() {
         navigate('/');
     };
 
+    const handleKick = (playerId: string) => {
+        if (window.confirm('Kick this player?')) {
+            socket.emit('kick_player', playerId);
+        }
+    };
+
+    const handleDeleteRoom = () => {
+        if (window.confirm('Delete this room and kick everyone?')) {
+            socket.emit('delete_room');
+        }
+    };
+
     const copyRoomCode = () => {
         navigator.clipboard.writeText(roomId);
         setGameStatus(`Room code ${roomId} copied!`);
@@ -107,6 +123,7 @@ function Table() {
     const myCurrentBet = myPlayer?.currentBet || 0;
     const toCall = currentBet - myCurrentBet;
     const canCheck = toCall === 0;
+    const isOwner = socket.id === ownerId;
 
     return (
         <div className="table-container">
@@ -117,9 +134,16 @@ function Table() {
                     🔗 {roomId}
                 </button>
                 <span className="pot">💰 ${pot}</span>
-                <button className="leave-btn" onClick={handleLeaveRoom} title="Leave Room">
-                    🚪
-                </button>
+                <div className="header-actions">
+                    {isOwner && (
+                        <button className="delete-btn" onClick={handleDeleteRoom} title="Delete Room">
+                            🗑️
+                        </button>
+                    )}
+                    <button className="leave-btn" onClick={handleLeaveRoom} title="Leave Room">
+                        🚪
+                    </button>
+                </div>
             </div>
 
             {/* Game Status */}
@@ -150,7 +174,12 @@ function Table() {
                                 key={player.id}
                                 className={`seat seat-${i + 1} ${player.isTurn ? 'active' : ''} ${player.folded ? 'folded' : ''}`}
                             >
-                                <div className="seat-avatar">{player.name[0].toUpperCase()}</div>
+                                <div className="seat-avatar">
+                                    {player.name[0].toUpperCase()}
+                                    {isOwner && player.id !== socket.id && (
+                                        <button className="kick-badge" onClick={() => handleKick(player.id)}>×</button>
+                                    )}
+                                </div>
                                 <div className="seat-name">{player.name}</div>
                                 <div className="seat-chips">${player.chips}</div>
                                 {player.currentBet !== undefined && player.currentBet > 0 && (
