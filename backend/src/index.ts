@@ -557,21 +557,50 @@ app.get('/rooms', (req, res) => {
     })));
 });
 
+// Admin Authentication Middleware
+const ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin123';
+
+const authenticateAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const authHeader = req.headers['authorization'];
+    if (authHeader === ADMIN_SECRET) {
+        next();
+    } else {
+        res.status(403).json({ error: 'Unauthorized: Invalid Admin Secret' });
+    }
+};
+
+// Admin: Get Server Stats
+app.get('/admin/stats', authenticateAdmin, (req, res) => {
+    res.json({
+        uptime: process.uptime(),
+        memory: process.memoryUsage(),
+        rooms: rooms.size,
+        totalPlayers: Array.from(rooms.values()).reduce((sum, r) => sum + r.players.length, 0),
+        activeRooms: Array.from(rooms.values()).map(r => ({
+            id: r.id,
+            name: r.settings.roomName,
+            players: r.players.length,
+            phase: r.phase,
+            pot: r.pot
+        }))
+    });
+});
+
 // Admin: Clear all rooms
-app.post('/admin/clear-all', (req, res) => {
+app.post('/admin/clear-all', authenticateAdmin, (req, res) => {
     const count = rooms.size;
     rooms.clear();
-    io.emit('force_disconnect', { message: 'Server reset' });
+    io.emit('force_disconnect', { message: 'Server reset by admin' });
     console.log(`🧹 Cleared all ${count} rooms`);
     res.json({ success: true, cleared: count });
 });
 
 // Admin: Delete specific room
-app.delete('/rooms/:roomId', (req, res) => {
-    const roomId = req.params.roomId.toUpperCase();
+app.delete('/admin/rooms/:roomId', authenticateAdmin, (req, res) => {
+    const roomId = (req.params.roomId as string).toUpperCase();
     const room = rooms.get(roomId);
     if (room) {
-        io.to(roomId).emit('force_disconnect', { message: 'Room deleted' });
+        io.to(roomId).emit('force_disconnect', { message: 'Room deleted by admin' });
         rooms.delete(roomId);
         console.log(`🗑️ Room ${roomId} deleted by admin`);
         res.json({ success: true });
