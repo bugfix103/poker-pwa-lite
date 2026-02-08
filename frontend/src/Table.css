@@ -120,22 +120,55 @@
 }
 
 .card {
-    width: 45px;
-    height: 65px;
+    width: 60px;
+    /* Increased from 45px */
+    height: 84px;
+    /* Increased from 65px */
     background: white;
-    border-radius: 6px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    font-size: 2.2rem;
+    /* Increased from 1.8rem */
+    font-weight: bold;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
     color: #333;
+    position: relative;
+    user-select: none;
 }
 
 .card.face-down {
-    background: linear-gradient(135deg, #1e3a5f 0%, #0d2137 100%);
-    color: #4a90d9;
+    background: repeating-linear-gradient(45deg,
+            #1e3a5f,
+            #1e3a5f 10px,
+            #162a45 10px,
+            #162a45 20px);
+    border: 2px solid #edeff2;
+    color: transparent;
 }
+
+/* Distinct Suit Colors */
+.card.hearts {
+    color: #e53935;
+}
+
+/* Red */
+.card.diamonds {
+    color: #1e88e5;
+}
+
+/* Blue */
+.card.clubs {
+    color: #43a047;
+}
+
+/* Green */
+.card.spades {
+    color: #212121;
+}
+
+/* Black */
 
 .waiting-text {
     color: rgba(255, 255, 255, 0.5);
@@ -383,13 +416,7 @@
 }
 
 /* Card colors */
-.card.red {
-    color: #e53935;
-}
-
-.card.black {
-    color: #212121;
-}
+/* Card colors are now handled by specific suit classes */
 
 /* Winner Banner */
 .winner-banner {
@@ -451,13 +478,27 @@
     background: white;
     padding: 2px 4px;
     border-radius: 3px;
-    font-size: 0.7rem;
+    font-size: 0.8rem;
+    font-weight: bold;
     color: #212121;
 }
 
-.mini-card.red {
+.mini-card.hearts {
     color: #e53935;
 }
+
+.mini-card.diamonds {
+    color: #1e88e5;
+}
+
+.mini-card.clubs {
+    color: #43a047;
+}
+
+.mini-card.spades {
+    color: #212121;
+}
+
 /* Connection Status */
 .table-connection {
     font-size: 0.8rem;

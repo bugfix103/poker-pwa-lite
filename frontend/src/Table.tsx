@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from './Login';
+import { getUserId } from './utils';
 import './Table.css';
 
 interface Player {
@@ -34,11 +35,14 @@ function Table() {
 
     useEffect(() => {
         // Re-join room on page refresh
+
+        // ... (inside Table component)
+
         const savedRoom = localStorage.getItem('poker_room');
         const savedName = localStorage.getItem('poker_username');
         if (savedRoom && savedName) {
             const savedAvatar = localStorage.getItem('poker_avatar') || '👤';
-            const userId = localStorage.getItem('poker_user_id') || 'unknown'; // Should be generated in Login/utils
+            const userId = getUserId(); // Use the utility to ensure ID exists
             socket.emit('join_room', { roomId: savedRoom, name: savedName, avatar: savedAvatar, userId });
         }
 
@@ -123,9 +127,13 @@ function Table() {
     };
 
     const renderCard = (card: string, index: number) => {
-        const isRed = card.includes('♥') || card.includes('♦');
+        let suitClass = 'spades';
+        if (card.includes('♥')) suitClass = 'hearts';
+        else if (card.includes('♦')) suitClass = 'diamonds';
+        else if (card.includes('♣')) suitClass = 'clubs';
+
         return (
-            <div key={index} className={`card ${isRed ? 'red' : 'black'}`}>
+            <div key={index} className={`card ${suitClass}`}>
                 {card}
             </div>
         );
@@ -213,11 +221,18 @@ function Table() {
                                 {player.folded && <div className="folded-badge">FOLD</div>}
                                 {phase === 'showdown' && player.cards && (
                                     <div className="player-cards">
-                                        {player.cards.map((c, idx) => (
-                                            <span key={idx} className={`mini-card ${c.includes('♥') || c.includes('♦') ? 'red' : ''}`}>
-                                                {c}
-                                            </span>
-                                        ))}
+                                        {player.cards.map((c, idx) => {
+                                            let suit = 'spades';
+                                            if (c.includes('♥')) suit = 'hearts';
+                                            else if (c.includes('♦')) suit = 'diamonds';
+                                            else if (c.includes('♣')) suit = 'clubs';
+
+                                            return (
+                                                <span key={idx} className={`mini-card ${suit}`}>
+                                                    {c}
+                                                </span>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

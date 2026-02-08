@@ -17,7 +17,11 @@ const io = new Server(httpServer, {
     }
 });
 
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json());
 
 // Constants
@@ -336,6 +340,9 @@ io.on('connection', (socket: Socket) => {
 
         // Check for existing player by userId (Persistent Identity)
         const existingPlayerIndex = room.players.findIndex(p => p.userId === userId);
+
+        console.log(`🔎 [Join Attempt] Name: ${name}, UserId: ${userId}, Room: ${roomId}`);
+        console.log(`   Existing players: ${room.players.map(p => `${p.name} (${p.userId})`).join(', ')}`);
 
         if (existingPlayerIndex !== -1) {
             // Player exists - Reconnect them
