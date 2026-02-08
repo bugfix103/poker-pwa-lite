@@ -121,6 +121,10 @@ function Table() {
         }
     };
 
+    const handleAddBot = () => {
+        socket.emit('add_bot');
+    };
+
     const copyRoomCode = () => {
         navigator.clipboard.writeText(roomId);
         setGameStatus(`Room code ${roomId} copied!`);
@@ -160,9 +164,14 @@ function Table() {
                 <span className="pot">💰 ${pot}</span>
                 <div className="header-actions">
                     {isOwner && (
-                        <button className="delete-btn" onClick={handleDeleteRoom} title="Delete Room">
-                            🗑️
-                        </button>
+                        <>
+                            <button className="add-bot-btn" onClick={handleAddBot} title="Add AI Bot">
+                                🤖
+                            </button>
+                            <button className="delete-btn" onClick={handleDeleteRoom} title="Delete Room">
+                                🗑️
+                            </button>
+                        </>
                     )}
                     <button className="leave-btn" onClick={handleLeaveRoom} title="Leave Room">
                         🚪
