@@ -227,3 +227,109 @@
         opacity: 1;
     }
 }
+
+/* Admin Panel Buttons */
+.poker-button {
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 1rem;
+}
+
+.poker-button.primary {
+    background: #bb86fc;
+    color: #000;
+}
+
+.poker-button.primary:hover {
+    background: #9d67e6;
+    transform: translateY(-2px);
+}
+
+.poker-button.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.poker-button.secondary:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Additional admin dashboard styles */
+.lobby-title {
+    color: white;
+    margin: 0;
+}
+
+.room-list {
+    margin-top: 20px;
+}
+
+.room-list h3 {
+    color: white;
+    margin-bottom: 15px;
+}
+
+.room-item {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.room-info {
+    flex: 1;
+}
+
+.room-action {
+    margin-left: 15px;
+}
+
+.join-btn {
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    background: #bb86fc;
+    color: #000;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.join-btn:hover {
+    background: #9d67e6;
+}
+
+.player-profile {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.profile-info {
+    flex: 1;
+}
+
+.profile-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: white;
+    margin-bottom: 5px;
+}
+
+.profile-chips {
+    color: #aaa;
+}

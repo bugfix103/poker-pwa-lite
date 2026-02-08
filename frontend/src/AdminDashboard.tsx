@@ -91,8 +91,8 @@ const AdminDashboard: React.FC = () => {
         }
     };
 
-    if (loading) return <div className="lobby-container"><div className="loading-spinner"></div></div>;
-    if (error) return <div className="lobby-container"><div className="error-message">{error}</div><button className="poker-button secondary" onClick={() => navigate('/admin')}>Back to Login</button></div>;
+    if (loading) return <div className="lobby-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}><div style={{ color: 'white', fontSize: '1.5rem' }}>Loading...</div></div>;
+    if (error) return <div className="lobby-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '20px' }}><div style={{ color: '#ff5555', fontSize: '1.2rem', textAlign: 'center' }}>{error}</div><button className="poker-button secondary" onClick={() => navigate('/admin')}>Back to Login</button></div>;
 
     return (
         <div className="lobby-container" style={{ overflowY: 'auto' }}>
