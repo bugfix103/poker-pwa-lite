@@ -1,9 +1,12 @@
+export type GameType = 'holdem' | 'omaha';
+
 export interface RoomSettings {
     buyIn: number;
     smallBlind: number;
     bigBlind: number;
     maxPlayers: number;
     roomName: string;
+    gameType: GameType;
 }
 
 export interface RoomInfo {
@@ -14,6 +17,7 @@ export interface RoomInfo {
     buyIn: number;
     blinds: string;
     phase: string;
+    gameType: GameType;
 }
 
 export const AVATARS = [
@@ -26,5 +30,11 @@ export const DEFAULT_SETTINGS: RoomSettings = {
     smallBlind: 5,
     bigBlind: 10,
     maxPlayers: 6,
-    roomName: ''
+    roomName: '',
+    gameType: 'holdem'
+};
+
+export const GAME_TYPE_LABELS: Record<GameType, string> = {
+    holdem: "Texas Hold'em",
+    omaha: 'Omaha'
 };

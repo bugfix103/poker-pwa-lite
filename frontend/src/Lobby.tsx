@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from './Login';
-import { type RoomInfo, type RoomSettings, DEFAULT_SETTINGS } from './types';
+import { type RoomInfo, type RoomSettings, DEFAULT_SETTINGS, GAME_TYPE_LABELS } from './types';
 import { getUserId } from './utils';
 import './Lobby.css';
 
@@ -150,6 +150,10 @@ function Lobby() {
                                 </span>
                             </div>
                             <div className="room-details">
+                                <div className="detail-item game-type-badge">
+                                    <span>{room.gameType === 'omaha' ? '🎰' : '🃏'}</span>
+                                    {GAME_TYPE_LABELS[room.gameType] || "Texas Hold'em"}
+                                </div>
                                 <div className="detail-item">
                                     <span>💰</span> ${room.buyIn} Buy-in
                                 </div>
@@ -189,6 +193,18 @@ function Lobby() {
                                 onChange={e => setSettings({ ...settings, roomName: e.target.value })}
                                 className="input-field"
                             />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Game Type</label>
+                            <select
+                                value={settings.gameType}
+                                onChange={e => setSettings({ ...settings, gameType: e.target.value as 'holdem' | 'omaha' })}
+                                className="input-field"
+                            >
+                                <option value="holdem">🃏 Texas Hold'em (2 cards)</option>
+                                <option value="omaha">🎰 Omaha (4 cards)</option>
+                            </select>
                         </div>
 
                         <div className="form-group">

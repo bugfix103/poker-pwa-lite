@@ -11,9 +11,9 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5433:5432" # Using 5433 to avoid conflict with other Postgres
+      - "5435:5432"  # Using 5435 to avoid conflict
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U poker -d poker" ]
+      test: ["CMD-SHELL", "pg_isready -U poker -d poker"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,9 +35,9 @@ services:
       JWT_SECRET: ${JWT_SECRET:-poker-jwt-secret-change-in-production}
       ADMIN_SECRET: ${ADMIN_SECRET:-admin123}
     ports:
-      - "3001:3000" # Using 3001 to avoid conflict
+      - "3002:3000"  # Using 3002 to avoid conflict
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/" ]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -48,15 +48,15 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_BACKEND_URL: http://localhost:3001
+        VITE_BACKEND_URL: http://localhost:3002
     container_name: poker_frontend
     restart: unless-stopped
     depends_on:
       - backend
     ports:
-      - "8080:80" # Using 8080 to avoid conflict
+      - "8888:80"  # Using 8888 to avoid conflict
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/" ]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
       interval: 30s
       timeout: 5s
       retries: 3

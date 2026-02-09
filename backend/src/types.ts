@@ -12,12 +12,15 @@ export interface Player {
     isBot?: boolean; // Added for Bot integration
 }
 
+export type GameType = 'holdem' | 'omaha';
+
 export interface RoomSettings {
     buyIn: number;
     smallBlind: number;
     bigBlind: number;
     maxPlayers: number;
     roomName: string;
+    gameType: GameType;
 }
 
 export interface Room {

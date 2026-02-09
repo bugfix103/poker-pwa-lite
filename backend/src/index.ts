@@ -116,6 +116,7 @@ function toDisplayCard(card: string): string {
 
 function determineWinner(room: Room): { winner: Player; handName: string } | null {
     const activePlayers = room.players.filter(p => !p.folded);
+    const gameType = room.settings.gameType || 'holdem';
 
     if (activePlayers.length === 0) return null;
     if (activePlayers.length === 1) {
@@ -124,7 +125,10 @@ function determineWinner(room: Room): { winner: Player; handName: string } | nul
 
     const hands = activePlayers.map(player => {
         const allCards = [...player.cards, ...room.communityCards];
-        const hand = Hand.solve(allCards);
+        // Use different solver based on game type
+        const hand = gameType === 'omaha'
+            ? Hand.solve(allCards, 'omaha')
+            : Hand.solve(allCards);
         return { player, hand };
     });
 
@@ -142,9 +146,14 @@ function startNewRound(room: Room) {
     console.log(`🎴 [${room.id}] Starting new round!`);
     room.deck = createDeck();
 
-    // Reset players
+    // Reset players - deal 2 cards for Hold'em, 4 for Omaha
+    const isOmaha = room.settings.gameType === 'omaha';
     room.players.forEach(player => {
-        player.cards = [room.deck.pop()!, room.deck.pop()!];
+        if (isOmaha) {
+            player.cards = [room.deck.pop()!, room.deck.pop()!, room.deck.pop()!, room.deck.pop()!];
+        } else {
+            player.cards = [room.deck.pop()!, room.deck.pop()!];
+        }
         player.folded = false;
         player.currentBet = 0;
     });
@@ -480,7 +489,8 @@ io.on('connection', (socket: Socket) => {
             maxPlayers: r.settings.maxPlayers,
             buyIn: r.settings.buyIn,
             blinds: `${r.settings.smallBlind}/${r.settings.bigBlind}`,
-            phase: r.phase
+            phase: r.phase,
+            gameType: r.settings.gameType || 'holdem'
         }));
         socket.emit('room_list', roomList);
     });
@@ -508,7 +518,8 @@ io.on('connection', (socket: Socket) => {
                 smallBlind: data.settings?.smallBlind || 5,
                 bigBlind: data.settings?.bigBlind || 10,
                 maxPlayers: data.settings?.maxPlayers || 6,
-                roomName: data.settings?.roomName || `${data.name}'s Table`
+                roomName: data.settings?.roomName || `${data.name}'s Table`,
+                gameType: data.settings?.gameType || 'holdem'
             }
         };
         rooms.set(roomId, room);
