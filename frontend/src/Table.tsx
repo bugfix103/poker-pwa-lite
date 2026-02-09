@@ -29,7 +29,7 @@ function Table() {
     const [winningHand, setWinningHand] = useState<string | null>(null);
     const [currentBet, setCurrentBet] = useState(0);
     const [roomId, setRoomId] = useState(localStorage.getItem('poker_room') || '');
-    const [ownerId, setOwnerId] = useState<string | null>(null);
+    const [isOwner, setIsOwner] = useState<boolean>(false);
     const [turnStartTime, setTurnStartTime] = useState<number | null>(null);
     const [turnDuration, setTurnDuration] = useState<number>(30);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -61,7 +61,7 @@ function Table() {
             if (data.phase) setPhase(data.phase);
             if (data.currentBet !== undefined) setCurrentBet(data.currentBet);
             if (data.roomId) setRoomId(data.roomId);
-            if (data.ownerId) setOwnerId(data.ownerId);
+            if (data.isOwner !== undefined) setIsOwner(data.isOwner);
             setWinner(data.winner || null);
             setWinningHand(data.winningHand || null);
             if (data.turnStartTime) setTurnStartTime(data.turnStartTime);
@@ -172,7 +172,7 @@ function Table() {
     const myCurrentBet = myPlayer?.currentBet || 0;
     const toCall = currentBet - myCurrentBet;
     const canCheck = toCall === 0;
-    const isOwner = getUserId() === ownerId;
+    // isOwner is now set from game_update event (line 64)
 
     return (
         <div className="table-container">

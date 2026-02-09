@@ -458,6 +458,7 @@ function broadcastRoomState(room: Room) {
             socket.emit('game_update', {
                 roomId: room.id,
                 ownerId: room.ownerId,
+                isOwner: player.userId === room.ownerId, // Check if this player is the owner
                 players: room.players.map(p => ({
                     id: p.id,
                     name: p.name,
@@ -478,8 +479,8 @@ function broadcastRoomState(room: Room) {
                 winner: room.winner,
                 winningHand: room.winningHand,
                 settings: room.settings,
-                turnStartTime: room.turnStartTime, // For timer countdown
-                turnDuration: room.turnDuration, // Seconds per turn
+                turnStartTime: room.turnStartTime,
+                turnDuration: room.turnDuration,
                 gameType: room.settings.gameType || 'holdem'
             });
         }
@@ -543,7 +544,7 @@ io.on('connection', (socket: Socket) => {
             winner: null,
             winningHand: null,
             deck: [],
-            ownerId: data.userId || socket.id,
+            ownerId: data.userId || socket.id, // Use userId for persistent ownership
             lastRaiserIndex: 0,
             minActionsLeft: 0,
             turnDuration: 240, // 4 minutes per turn
@@ -557,7 +558,7 @@ io.on('connection', (socket: Socket) => {
             }
         };
         rooms.set(roomId, room);
-        console.log(`🏠 Room ${roomId} created by ${data.name}`);
+        console.log(`🏠 Room ${roomId} created by ${data.name} (ownerId: ${room.ownerId})`);
 
         socket.emit('room_created', { roomId });
         io.emit('room_list_update'); // Tell everyone in lobby to refresh
