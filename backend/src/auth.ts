@@ -34,25 +34,26 @@ router.post('/register', async (req, res) => {
         }
 
         // Check if user exists
-        const existing = db.prepare('SELECT id FROM users WHERE username = ?').get(username);
+        const existing = await db.get<{ id: number }>('SELECT id FROM users WHERE username = ?', [username]);
         if (existing) {
             return res.status(400).json({ error: 'Username already taken' });
         }
 
         // Hash password and create user
         const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-        const result = db.prepare(
-            'INSERT INTO users (username, password_hash, chips) VALUES (?, ?, ?)'
-        ).run(username, passwordHash, STARTING_CHIPS);
+        const result = await db.run(
+            'INSERT INTO users (username, password_hash, chips) VALUES (?, ?, ?)',
+            [username, passwordHash, STARTING_CHIPS]
+        );
 
-        const token = jwt.sign({ userId: result.lastInsertRowid, username }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ userId: result.lastID, username }, JWT_SECRET, { expiresIn: '7d' });
 
         console.log(`✅ New user registered: ${username}`);
 
         res.json({
             token,
             user: {
-                id: result.lastInsertRowid,
+                id: result.lastID,
                 username,
                 chips: STARTING_CHIPS,
                 avatar: '👤'
@@ -73,7 +74,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Username and password required' });
         }
 
-        const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username) as User | undefined;
+        const user = await db.get<User>('SELECT * FROM users WHERE username = ?', [username]);
         if (!user) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
@@ -103,7 +104,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Get current user (requires token)
-router.get('/me', (req, res) => {
+router.get('/me', async (req, res) => {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
         return res.status(401).json({ error: 'No token provided' });
@@ -113,7 +114,7 @@ router.get('/me', (req, res) => {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string };
 
-        const user = db.prepare('SELECT id, username, chips, avatar FROM users WHERE id = ?').get(decoded.userId) as User | undefined;
+        const user = await db.get<User>('SELECT id, username, chips, avatar FROM users WHERE id = ?', [decoded.userId]);
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -124,14 +125,47 @@ router.get('/me', (req, res) => {
     }
 });
 
+// Top up chips (admin or self)
+router.post('/topup', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+
+    try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: number; username: string };
+
+        const { amount } = req.body;
+        if (!amount || amount <= 0 || amount > 100000) {
+            return res.status(400).json({ error: 'Invalid amount (max 100000)' });
+        }
+
+        const user = await db.get<User>('SELECT chips FROM users WHERE id = ?', [decoded.userId]);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const newBalance = user.chips + amount;
+        await db.run('UPDATE users SET chips = ? WHERE id = ?', [newBalance, decoded.userId]);
+
+        console.log(`💰 User ${decoded.username} topped up ${amount} chips (new balance: ${newBalance})`);
+
+        res.json({ chips: newBalance });
+    } catch (err) {
+        console.error('Topup error:', err);
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+});
+
 // Update user chips (internal use)
-export function updateUserChips(userId: number, chips: number) {
-    db.prepare('UPDATE users SET chips = ? WHERE id = ?').run(chips, userId);
+export async function updateUserChips(userId: number, chips: number) {
+    await db.run('UPDATE users SET chips = ? WHERE id = ?', [chips, userId]);
 }
 
 // Get user by ID
-export function getUserById(userId: number): User | undefined {
-    return db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User | undefined;
+export async function getUserById(userId: number): Promise<User | undefined> {
+    return await db.get<User>('SELECT * FROM users WHERE id = ?', [userId]);
 }
 
 export { JWT_SECRET };
