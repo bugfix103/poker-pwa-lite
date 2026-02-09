@@ -543,7 +543,7 @@ io.on('connection', (socket: Socket) => {
             winner: null,
             winningHand: null,
             deck: [],
-            ownerId: socket.id,
+            ownerId: data.userId || socket.id,
             lastRaiserIndex: 0,
             minActionsLeft: 0,
             turnDuration: 240, // 4 minutes per turn

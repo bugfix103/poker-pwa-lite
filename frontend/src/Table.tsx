@@ -172,7 +172,7 @@ function Table() {
     const myCurrentBet = myPlayer?.currentBet || 0;
     const toCall = currentBet - myCurrentBet;
     const canCheck = toCall === 0;
-    const isOwner = socket.id === ownerId;
+    const isOwner = getUserId() === ownerId;
 
     return (
         <div className="table-container">
