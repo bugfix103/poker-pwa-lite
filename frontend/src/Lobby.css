@@ -108,6 +108,28 @@
     font-weight: bold;
 }
 
+.header-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn.topup {
+    background: linear-gradient(135deg, #4caf50, #2e7d32);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.btn.topup:hover {
+    background: linear-gradient(135deg, #66bb6a, #388e3c);
+    transform: scale(1.05);
+}
+
 .lobby-actions {
     display: flex;
     gap: 15px;

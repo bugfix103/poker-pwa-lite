@@ -37,5 +37,5 @@ export interface Room {
     minActionsLeft: number;
     settings: RoomSettings;
     turnStartTime?: number; // Unix timestamp when turn started
-    turnDuration: number; // Seconds allowed per turn (default 30)
+    turnDuration: number; // Seconds allowed per turn (default 240 = 4 min)
 }

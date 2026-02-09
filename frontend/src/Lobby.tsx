@@ -5,15 +5,34 @@ import { type RoomInfo, type RoomSettings, DEFAULT_SETTINGS } from './types';
 import { getUserId } from './utils';
 import './Lobby.css';
 
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+
 function Lobby() {
     const navigate = useNavigate();
     const [rooms, setRooms] = useState<RoomInfo[]>([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [settings, setSettings] = useState<RoomSettings>(DEFAULT_SETTINGS);
+    const [userBalance, setUserBalance] = useState<number | null>(null);
 
     const username = localStorage.getItem('poker_username');
     const avatar = localStorage.getItem('poker_avatar') || '👤';
     const token = localStorage.getItem('poker_token');
+
+    // Fetch user balance
+    const fetchBalance = async () => {
+        if (!token) return;
+        try {
+            const res = await fetch(`${BACKEND_URL}/auth/me`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setUserBalance(data.user.chips);
+            }
+        } catch (e) {
+            console.error('Failed to fetch balance:', e);
+        }
+    };
 
     useEffect(() => {
         // Require both username and token
@@ -21,6 +40,9 @@ function Lobby() {
             navigate('/');
             return;
         }
+
+        // Fetch user balance
+        fetchBalance();
 
         // Request room list
         socket.emit('get_rooms');
@@ -86,14 +108,21 @@ function Lobby() {
                     <div className="user-avatar">{avatar}</div>
                     <div className="user-info">
                         <h3>{username}</h3>
-                        <div className="chip-balance">Starting: ${settings.buyIn}</div>
+                        <div className="chip-balance">
+                            Balance: ${userBalance !== null ? userBalance.toLocaleString() : '...'}
+                        </div>
                     </div>
                 </div>
-                <button className="btn secondary" onClick={() => {
-                    localStorage.removeItem('poker_token');
-                    localStorage.removeItem('poker_username');
-                    navigate('/');
-                }}>Log Out</button>
+                <div className="header-buttons">
+                    <button className="btn topup" onClick={() => alert('💰 Top Up coming soon!')}>
+                        💰 Top Up
+                    </button>
+                    <button className="btn secondary" onClick={() => {
+                        localStorage.removeItem('poker_token');
+                        localStorage.removeItem('poker_username');
+                        navigate('/');
+                    }}>Log Out</button>
+                </div>
             </header>
 
             <div className="lobby-actions">
