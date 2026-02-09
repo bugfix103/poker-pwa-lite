@@ -382,14 +382,29 @@ function executeGameAction(room: Room, player: Player, data: { type: string; amo
     } while (room.players[room.turnIndex].folded);
     room.players[room.turnIndex].isTurn = true;
 
-    // NEW Betting Round logic
+    // NEW Betting Round logic with all-in check
     const activeBettors = room.players.filter(p => !p.folded);
     const allMatched = activeBettors.every(p => p.currentBet === room.currentBet);
-    const roundComplete = room.minActionsLeft <= 0 && allMatched;
+
+    // Check if players can still act (not all-in)
+    const playersWhoCanAct = activeBettors.filter(p => p.chips > 0);
+    const allInOrMatched = playersWhoCanAct.length <= 1 && allMatched;
+
+    const roundComplete = (room.minActionsLeft <= 0 && allMatched) || allInOrMatched;
 
     if (roundComplete) {
-        advancePhase(room);
+        // If only one person can act or everyone is all-in, run cards to showdown
+        if (playersWhoCanAct.length <= 1) {
+            // Skip directly to showdown - deal remaining community cards
+            while (room.communityCards.length < 5 && (room.phase as string) !== 'showdown') {
+                advancePhase(room);
+            }
+        } else {
+            advancePhase(room);
+        }
     } else {
+        // Start timer for next player's turn
+        startTurnTimer(room);
         broadcastRoomState(room);
     }
 }
@@ -487,7 +502,7 @@ io.on('connection', (socket: Socket) => {
             ownerId: socket.id,
             lastRaiserIndex: 0,
             minActionsLeft: 0,
-            turnDuration: 30, // 30 seconds per turn
+            turnDuration: 240, // 4 minutes per turn
             settings: {
                 buyIn: data.settings?.buyIn || 1000,
                 smallBlind: data.settings?.smallBlind || 5,
