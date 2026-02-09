@@ -113,17 +113,18 @@ function Lobby() {
                         </div>
                     </div>
                 </div>
-                <div className="header-buttons">
-                    <button className="btn topup" onClick={() => alert('💰 Top Up coming soon!')}>
-                        💰 Top Up
-                    </button>
-                    <button className="btn secondary" onClick={() => {
-                        localStorage.removeItem('poker_token');
-                        localStorage.removeItem('poker_username');
-                        navigate('/');
-                    }}>Log Out</button>
-                </div>
             </header>
+            <div className="header-buttons-row">
+                <button className="btn topup" onClick={() => alert('💰 Top Up coming soon!')}>
+                    💰 Top Up
+                </button>
+                <button className="btn secondary" onClick={() => {
+                    localStorage.removeItem('poker_token');
+                    localStorage.removeItem('poker_username');
+                    navigate('/');
+                }}>Log Out</button>
+            </div>
+
 
             <div className="lobby-actions">
                 <button className="btn primary" onClick={() => setShowCreateModal(true)}>

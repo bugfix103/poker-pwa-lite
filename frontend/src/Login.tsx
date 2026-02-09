@@ -54,7 +54,19 @@ function Login() {
         socket.on('connect', onConnect);
         socket.on('disconnect', onDisconnect);
 
-        if (!socket.connected) {
+        // If not connected within 3 seconds, force reconnect
+        const connectTimeout = setTimeout(() => {
+            if (!socket.connected) {
+                console.log('🔄 Forcing socket reconnect...');
+                socket.disconnect();
+                socket.connect();
+            }
+        }, 3000);
+
+        // Also set connected state immediately if already connected
+        if (socket.connected) {
+            setIsConnected(true);
+        } else {
             socket.connect();
         }
 
@@ -68,6 +80,7 @@ function Login() {
         if (savedAvatar) setSelectedAvatar(savedAvatar);
 
         return () => {
+            clearTimeout(connectTimeout);
             socket.off('connect', onConnect);
             socket.off('disconnect', onDisconnect);
         };

@@ -113,6 +113,13 @@
     gap: 10px;
 }
 
+.header-buttons-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+    justify-content: flex-start;
+}
+
 .btn.topup {
     background: linear-gradient(135deg, #4caf50, #2e7d32);
     color: white;
