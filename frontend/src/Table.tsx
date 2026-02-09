@@ -32,6 +32,7 @@ function Table() {
     const [turnStartTime, setTurnStartTime] = useState<number | null>(null);
     const [turnDuration, setTurnDuration] = useState<number>(30);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
+    const [gameType, setGameType] = useState<'holdem' | 'omaha'>('holdem');
     const navigate = useNavigate();
 
     const username = localStorage.getItem('poker_username') || 'Guest';
@@ -64,6 +65,7 @@ function Table() {
             setWinningHand(data.winningHand || null);
             if (data.turnStartTime) setTurnStartTime(data.turnStartTime);
             if (data.turnDuration) setTurnDuration(data.turnDuration);
+            if (data.gameType) setGameType(data.gameType);
         });
 
         socket.on('player_joined', (data) => {
@@ -290,10 +292,19 @@ function Table() {
                 <div className="cards-container">
                     {myCards.length > 0
                         ? myCards.map(renderCard)
-                        : <>
-                            <div className="card face-down">🂠</div>
-                            <div className="card face-down">🂠</div>
-                        </>
+                        : gameType === 'omaha' ? (
+                            <>
+                                <div className="card face-down">🂠</div>
+                                <div className="card face-down">🂠</div>
+                                <div className="card face-down">🂠</div>
+                                <div className="card face-down">🂠</div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="card face-down">🂠</div>
+                                <div className="card face-down">🂠</div>
+                            </>
+                        )
                     }
                 </div>
             </div>

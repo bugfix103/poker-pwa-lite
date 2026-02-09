@@ -446,7 +446,8 @@ function broadcastRoomState(room: Room) {
                 winningHand: room.winningHand,
                 settings: room.settings,
                 turnStartTime: room.turnStartTime, // For timer countdown
-                turnDuration: room.turnDuration // Seconds per turn
+                turnDuration: room.turnDuration, // Seconds per turn
+                gameType: room.settings.gameType || 'holdem'
             });
         }
     });
