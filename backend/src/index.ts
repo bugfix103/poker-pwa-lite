@@ -455,10 +455,12 @@ function broadcastRoomState(room: Room) {
     room.players.forEach(player => {
         const socket = io.sockets.sockets.get(player.id);
         if (socket) {
+            const isOwner = player.userId === room.ownerId;
+            console.log(`📡 [${room.id}] Broadcasting to ${player.name}: userId=${player.userId}, ownerId=${room.ownerId}, isOwner=${isOwner}`);
             socket.emit('game_update', {
                 roomId: room.id,
                 ownerId: room.ownerId,
-                isOwner: player.userId === room.ownerId, // Check if this player is the owner
+                isOwner: isOwner,
                 players: room.players.map(p => ({
                     id: p.id,
                     name: p.name,
@@ -681,8 +683,12 @@ io.on('connection', (socket: Socket) => {
         if (!currentRoom) return;
         const room = currentRoom;
 
-        // Check if owner
-        if (room.ownerId !== socket.id) {
+        // Find the player making the request
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player) return;
+
+        // Check if owner using userId
+        if (room.ownerId !== player.userId) {
             socket.emit('error', { message: 'Only owner can add bots' });
             return;
         }
@@ -730,7 +736,11 @@ io.on('connection', (socket: Socket) => {
     });
 
     socket.on('kick_player', (playerId: string) => {
-        if (!currentRoom || currentRoom.ownerId !== socket.id) return;
+        if (!currentRoom) return;
+
+        // Find requester
+        const requester = currentRoom.players.find(p => p.id === socket.id);
+        if (!requester || requester.userId !== currentRoom.ownerId) return;
 
         // Find and remove the player from room
         const playerIndex = currentRoom.players.findIndex(p => p.id === playerId);
@@ -754,7 +764,11 @@ io.on('connection', (socket: Socket) => {
     });
 
     socket.on('delete_room', () => {
-        if (!currentRoom || currentRoom.ownerId !== socket.id) return;
+        if (!currentRoom) return;
+
+        // Find requester
+        const requester = currentRoom.players.find(p => p.id === socket.id);
+        if (!requester || requester.userId !== currentRoom.ownerId) return;
         console.log(`🗑️ Room ${currentRoom.id} deleted by owner`);
         clearTurnTimer(currentRoom.id);
         io.to(currentRoom.id).emit('force_disconnect', { message: 'Room deleted by owner' });
@@ -767,8 +781,9 @@ io.on('connection', (socket: Socket) => {
         if (currentRoom) {
             const playerIndex = currentRoom.players.findIndex(p => p.id === socket.id);
             if (playerIndex !== -1) {
-                const playerName = currentRoom.players[playerIndex].name;
-                const wasOwner = currentRoom.ownerId === socket.id;
+                const leavingPlayer = currentRoom.players[playerIndex];
+                const playerName = leavingPlayer.name;
+                const wasOwner = currentRoom.ownerId === leavingPlayer.userId;
 
                 currentRoom.players.splice(playerIndex, 1);
                 io.to(currentRoom.id).emit('player_left', { name: playerName });
@@ -777,7 +792,8 @@ io.on('connection', (socket: Socket) => {
                 if (wasOwner && currentRoom.players.length > 0) {
                     // Find first non-bot player, or first bot if all are bots
                     const newOwner = currentRoom.players.find(p => !p.isBot) || currentRoom.players[0];
-                    currentRoom.ownerId = newOwner.id;
+                    // Update owner to new player's userId (fallback to socket ID if no userId)
+                    currentRoom.ownerId = newOwner.userId || newOwner.id;
                     console.log(`👑 Ownership of ${currentRoom.id} transferred to ${newOwner.name}`);
                 }
 
