@@ -5,7 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 // @ts-ignore - pokersolver doesn't have types
 import { Hand } from 'pokersolver';
-import { Player, Room } from './types';
+import { Player, Room, GAME_CONFIGS } from './types';
 import { BotLogic } from './bot';
 import authRouter from './auth';
 
@@ -100,6 +100,19 @@ function createDeck(): string[] {
     return shuffle(deck);
 }
 
+// Short Deck (6+) - no 2, 3, 4, 5 cards
+const shortDeckValues = ['6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+
+function createShortDeck(): string[] {
+    const deck: string[] = [];
+    for (const suit of suits) {
+        for (const value of shortDeckValues) {
+            deck.push(value + suit);
+        }
+    }
+    return shuffle(deck);
+}
+
 function shuffle(array: string[]): string[] {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -117,6 +130,7 @@ function toDisplayCard(card: string): string {
 function determineWinner(room: Room): { winner: Player; handName: string } | null {
     const activePlayers = room.players.filter(p => !p.folded);
     const gameType = room.settings.gameType || 'holdem';
+    const config = GAME_CONFIGS[gameType];
 
     if (activePlayers.length === 0) return null;
     if (activePlayers.length === 1) {
@@ -125,10 +139,24 @@ function determineWinner(room: Room): { winner: Player; handName: string } | nul
 
     const hands = activePlayers.map(player => {
         const allCards = [...player.cards, ...room.communityCards];
-        // Use different solver based on game type
-        const hand = gameType === 'omaha'
-            ? Hand.solve(allCards, 'omaha')
-            : Hand.solve(allCards);
+        let hand;
+
+        // Use appropriate solver based on game type
+        switch (config.solverType) {
+            case 'omaha':
+                hand = Hand.solve(allCards, 'omaha');
+                break;
+            case 'omahahilo':
+                // For Hi-Lo, we'll use standard solver for high hand
+                // TODO: implement split pot logic
+                hand = Hand.solve(allCards, 'omaha');
+                break;
+            case 'threecard':
+                hand = Hand.solve(player.cards, 'threecard');
+                break;
+            default:
+                hand = Hand.solve(allCards);
+        }
         return { player, hand };
     });
 
@@ -144,26 +172,31 @@ function determineWinner(room: Room): { winner: Player; handName: string } | nul
 
 function startNewRound(room: Room) {
     console.log(`🎴 [${room.id}] Starting new round!`);
-    room.deck = createDeck();
 
-    // Reset players - deal 2 cards for Hold'em, 4 for Omaha
-    const isOmaha = room.settings.gameType === 'omaha';
+    const gameType = room.settings.gameType || 'holdem';
+    const config = GAME_CONFIGS[gameType];
+
+    // Create appropriate deck
+    room.deck = config.deckType === 'shortdeck' ? createShortDeck() : createDeck();
+
+    // Deal cards based on game type
     room.players.forEach(player => {
-        if (isOmaha) {
-            player.cards = [room.deck.pop()!, room.deck.pop()!, room.deck.pop()!, room.deck.pop()!];
-        } else {
-            player.cards = [room.deck.pop()!, room.deck.pop()!];
+        player.cards = [];
+        for (let i = 0; i < config.holeCards; i++) {
+            player.cards.push(room.deck.pop()!);
         }
         player.folded = false;
         player.currentBet = 0;
+        player.discardedCards = [];
     });
 
     room.communityCards = [];
     room.pot = 0;
     room.currentBet = 0;
-    room.phase = 'preflop';
+    room.phase = config.hasDiscard ? 'draw' : 'preflop';
     room.winner = null;
     room.winningHand = null;
+    room.drawPhaseComplete = false;
 
     // Set dealer
     room.dealerIndex = room.dealerIndex % room.players.length;

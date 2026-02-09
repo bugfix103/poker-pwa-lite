@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { socket } from './Login';
 import { getUserId } from './utils';
+import { type GameType, GAME_HOLE_CARDS } from './types';
 import './Table.css';
 
 interface Player {
@@ -32,7 +33,7 @@ function Table() {
     const [turnStartTime, setTurnStartTime] = useState<number | null>(null);
     const [turnDuration, setTurnDuration] = useState<number>(30);
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
-    const [gameType, setGameType] = useState<'holdem' | 'omaha'>('holdem');
+    const [gameType, setGameType] = useState<GameType>('holdem');
     const navigate = useNavigate();
 
     const username = localStorage.getItem('poker_username') || 'Guest';
@@ -292,19 +293,9 @@ function Table() {
                 <div className="cards-container">
                     {myCards.length > 0
                         ? myCards.map(renderCard)
-                        : gameType === 'omaha' ? (
-                            <>
-                                <div className="card face-down">🂠</div>
-                                <div className="card face-down">🂠</div>
-                                <div className="card face-down">🂠</div>
-                                <div className="card face-down">🂠</div>
-                            </>
-                        ) : (
-                            <>
-                                <div className="card face-down">🂠</div>
-                                <div className="card face-down">🂠</div>
-                            </>
-                        )
+                        : Array.from({ length: GAME_HOLE_CARDS[gameType] || 2 }, (_, i) => (
+                            <div key={i} className="card face-down">🂠</div>
+                        ))
                     }
                 </div>
             </div>

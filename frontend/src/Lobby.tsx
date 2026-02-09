@@ -200,11 +200,16 @@ function Lobby() {
                             <label>Game Type</label>
                             <select
                                 value={settings.gameType}
-                                onChange={e => setSettings({ ...settings, gameType: e.target.value as 'holdem' | 'omaha' })}
+                                onChange={e => setSettings({ ...settings, gameType: e.target.value as any })}
                                 className="input-field"
                             >
                                 <option value="holdem">🃏 Texas Hold'em (2 cards)</option>
                                 <option value="omaha">🎰 Omaha (4 cards)</option>
+                                <option value="omaha_hilo">🔀 Omaha Hi-Lo (4 cards, split pot)</option>
+                                <option value="stud7">7️⃣ 7-Card Stud (7 cards)</option>
+                                <option value="draw5">🔄 5-Card Draw (5 cards, discard)</option>
+                                <option value="shortdeck">⚡ Short Deck 6+ (2 cards, no 2-5)</option>
+                                <option value="threecard">🎲 3-Card Poker (3 cards, fast)</option>
                             </select>
                         </div>
 
