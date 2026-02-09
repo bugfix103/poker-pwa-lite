@@ -581,10 +581,10 @@ io.on('connection', (socket: Socket) => {
             // Player exists - Reconnect them
             const player = room.players[existingPlayerIndex];
 
-            // If this player was the owner, update ownerId to new socket
-            if (room.ownerId === player.id) {
-                room.ownerId = socket.id;
-                console.log(`👑 Owner ownership transferred to new socket: ${socket.id}`);
+            // Owner check now uses userId, no need to transfer ownerId
+            const isReconnectingOwner = player.userId === room.ownerId;
+            if (isReconnectingOwner) {
+                console.log(`👑 Owner ${player.name} (${player.userId}) reconnected`);
             }
 
             // Update socket ID to new connection
