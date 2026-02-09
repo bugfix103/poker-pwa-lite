@@ -789,6 +789,8 @@ io.on('connection', (socket: Socket) => {
                 io.to(currentRoom.id).emit('player_left', { name: playerName });
 
                 // Transfer ownership if owner left and there are still players
+                /* 
+                // Disabled: User wants creator to remain owner even if they leave
                 if (wasOwner && currentRoom.players.length > 0) {
                     // Find first non-bot player, or first bot if all are bots
                     const newOwner = currentRoom.players.find(p => !p.isBot) || currentRoom.players[0];
@@ -796,6 +798,7 @@ io.on('connection', (socket: Socket) => {
                     currentRoom.ownerId = newOwner.userId || newOwner.id;
                     console.log(`👑 Ownership of ${currentRoom.id} transferred to ${newOwner.name}`);
                 }
+                */
 
                 if (currentRoom.players.length < 2) {
                     currentRoom.phase = 'waiting';
